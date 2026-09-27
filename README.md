@@ -230,6 +230,60 @@ This repository implements **smart path filtering** to optimize runner minutes a
 
 ---
 
+## 🔄 End-to-End Pipeline Execution Order & Flow
+
+Understanding which component executes first and how data flows across the pipeline:
+
+```text
+1. TERRAFORM (Run Once by Engineer / Infra Team)
+   You run: cd terraform_files && terraform apply
+   Why: Infrastructure (VPCs, RDS Databases, EC2 host) is long-lived and does not change on every code commit.
+   Note: terraform_files/output.tf automatically writes the generated RDS endpoint directly into k8s/database/configmap.yaml!
+
+             │ (Outputs RDS Endpoint & auto-populates configmap.yaml)
+             ▼
+2. GITHUB REPOSITORY (Save endpoint & secret)
+   Terraform auto-populates k8s/database/configmap.yaml.
+   Set your database password in k8s/database/secret.yaml.
+   You git commit & push to GitHub.
+
+             │ (git push event triggers CI)
+             ▼
+3. GITHUB ACTIONS (Automated CI via Event Triggers)
+   Configured in: .github/workflows/app-ci.yaml
+   Line 4: on: push: branches: [ main ]
+   When you push code, GitHub Actions automatically wakes up, installs dependencies, builds the Docker images, and pushes them to Docker Hub.
+
+             │ (ArgoCD polls GitHub / GitOps reconciliation)
+             ▼
+4. ARGOCD (Automated GitOps Runtime Delivery)
+   Configured in: k8s/argocd/application.yaml
+   Line 20: syncPolicy: automated: prune: true, selfHeal: true
+   ArgoCD continuously watches your GitHub repo. When it sees the new commit, it automatically deploys the manifests to Kubernetes.
+```
+
+---
+
+### 🔐 Kubernetes Secret Auto-Decoding Mechanism
+
+When defining database passwords in [`k8s/database/secret.yaml`](k8s/database/secret.yaml):
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-secret
+type: Opaque
+data:
+  DB_PWD: MTIzNDU2Nzg5 # base64 for '123456789'
+```
+
+* **How it works:** Kubernetes securely stores the password in Base64 in `etcd`.
+* **Automatic Decoding:** When the Secret is injected into the backend pod via `secretKeyRef`, **Kubernetes automatically base64-decodes it into plaintext**.
+* **Application View:** Inside [`backend/DbConfig.js`](backend/DbConfig.js), `process.env.DB_PWD` directly receives the original plaintext string (`"123456789"`), requiring no decoding logic in application code.
+
+---
+
 ## 🚀 Quick Deployment Guide
 
 ### 1. Provision Infrastructure with Terraform
@@ -239,11 +293,19 @@ terraform init
 terraform plan
 terraform apply -auto-approve
 ```
+> 💡 *Note: Terraform automatically writes the new RDS database endpoint into `k8s/database/configmap.yaml` using the `local_file` resource in `output.tf`.*
 
 ### 2. Configure Kubernetes Secrets
-Update `k8s/database/configmap.yaml` with the RDS endpoint from Terraform output, and encode your password in `k8s/database/secret.yaml`:
+Encode your database password and save it in `k8s/database/secret.yaml`:
 ```bash
 echo -n "YourSecurePassword" | base64
+```
+
+Push any configuration updates to GitHub:
+```bash
+git add k8s/database/configmap.yaml k8s/database/secret.yaml
+git commit -m "infra: update database configs"
+git push origin main
 ```
 
 ### 3. Deploy Application via ArgoCD
