@@ -105,7 +105,7 @@ The file [`k8s/argocd/application.yaml`](k8s/argocd/application.yaml) represents
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: three-tier-app
+  name: three-tier-app-v1
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -128,13 +128,21 @@ spec:
       - CreateNamespace=true
 ```
 
+> 📖 **Deep Dive Documentation:** For complete operations, UI access, and cluster setup instructions, see the dedicated [ArgoCD Documentation (`k8s/argocd/README.md`)](k8s/argocd/README.md).
+
+### ❓ Why 2 Different Namespaces (`argocd` vs `default`)?
+Even on a single-node or Master-only cluster, separating namespaces enforces production-grade isolation:
+* **`metadata.namespace: argocd` (Control Plane):** Where the ArgoCD controller, repo server, and CRDs reside.
+* **`spec.destination.namespace: default` (Workload Plane):** Where user-facing React pods, Node.js pods, and services are deployed.
+* **Why Separate:** Prevents application crashes (OOM) or container security exploits in user pods from compromising or crashing the GitOps deployment engine and administrative secrets.
+
 ### Detailed Field Breakdown
 
 | Line / Field | Technical Meaning (What it does) | Architectural Rationale (Why we use it) |
 | :--- | :--- | :--- |
 | **`apiVersion: argoproj.io/v1alpha1`** | Identifies the schema version of the ArgoCD Custom Resource Definition (CRD). | **Production Standard:** Although named `alpha1`, this is the permanent, standard CRD version used across all ArgoCD v1.x and v2.x releases for backward compatibility. |
 | **`kind: Application`** | Specifies the Kubernetes resource type. | Tells the ArgoCD controller to track and sync a continuous deployment unit between Git and Kubernetes. |
-| **`metadata.name: three-tier-app`** | The unique identifier of this deployment unit. | Displayed as the top-level card in the ArgoCD Web UI and referenced in CLI operations (`argocd app get three-tier-app`). |
+| **`metadata.name: three-tier-app-v1`** | The unique identifier of this deployment unit. | Displayed as the top-level card in the ArgoCD Web UI and referenced in CLI operations (`argocd app get three-tier-app-v1`). |
 | **`metadata.namespace: argocd`** | Specifies the namespace where the Application custom resource resides. | The ArgoCD controller process runs inside the `argocd` namespace and watches this namespace for application definitions. |
 | **`finalizers: - resources-finalizer.argocd.argoproj.io`** | Enables **Cascade Deletion**. | **Prevents Zombie Resources:** If this Application is ever deleted, ArgoCD automatically cleans up all associated Deployments, Services, and ConfigMaps from the cluster. *(Note: Does not affect Terraform-managed AWS cloud infrastructure).* |
 | **`spec.project: default`** | Assigns the app to an ArgoCD `AppProject` logical security boundary. | **Mandatory Field:** ArgoCD requires every app to belong to a project. The built-in `default` project allows deployments from any repository to any cluster without requiring custom RBAC policies. |
