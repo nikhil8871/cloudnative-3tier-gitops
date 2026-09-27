@@ -1,0 +1,25 @@
+name: GitOps K8s Validation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'k8s/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'k8s/**'
+
+jobs:
+  k8s-lint:
+    name: Validate Kubernetes Manifests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Validate YAML Syntax
+        run: |
+          python3 -c "import yaml, glob; [list(yaml.safe_load_all(open(f))) for f in glob.glob('k8s/**/*.yaml', recursive=True)]"
+          echo "All Kubernetes manifests have valid YAML syntax."

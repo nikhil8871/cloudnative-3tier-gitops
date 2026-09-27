@@ -1,0 +1,35 @@
+# --- Terraform ---
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+.terraform.lock.hcl
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+cluster_outputs.txt
+AllConcept
+
+# --- Node / JavaScript ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+build/
+dist/
+
+# --- Environment & Keys ---
+.env
+.env.*
+*.pem
+*.key
+id_rsa
+id_ed25519
+
+# --- Operating System ---
+.DS_Store
+Thumbs.db

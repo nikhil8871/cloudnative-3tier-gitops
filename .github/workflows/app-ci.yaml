@@ -1,0 +1,58 @@
+name: Application CI (Docker & Services)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'Docker-Compose.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'Docker-Compose.yml'
+
+jobs:
+  test-and-build:
+    name: Build & Validate Containers
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Validate Backend Dependencies
+        run: |
+          cd backend
+          npm ci --prefer-offline --no-audit || npm install
+          echo "Backend dependencies verified."
+
+      - name: Validate Frontend Dependencies
+        run: |
+          cd frontend
+          npm ci --prefer-offline --no-audit || npm install
+          echo "Frontend dependencies verified."
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Backend Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: false
+          tags: nikhil8871/3-tier-backend:${{ github.sha }}
+
+      - name: Build Frontend Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: false
+          tags: nikhil8871/3-tier-frontend:${{ github.sha }}

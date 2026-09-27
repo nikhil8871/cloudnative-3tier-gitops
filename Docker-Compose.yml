@@ -1,0 +1,10 @@
+#Push build image to dockerhub
+
+version: "3"
+services:
+  backend:
+    build: ./backend
+    image: nikhil8871/3-tier-backend:v1
+  frontend:
+    build: ./frontend
+    image: nikhil8871/3-tier-frontend:v1
