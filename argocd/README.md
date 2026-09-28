@@ -148,7 +148,7 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 ### 3. Deploy the 3-Tier Application
 ```bash
 # Apply the GitOps application manifest
-kubectl apply -f k8s/argocd/application.yaml
+kubectl apply -f argocd/application.yaml
 ```
 
 ### 4. Verify Sync Status

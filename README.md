@@ -99,7 +99,7 @@ infra   │                                image  │
 
 ## ☸️ GitOps with ArgoCD: Deep Dive into `application.yaml`
 
-The file [`k8s/argocd/application.yaml`](k8s/argocd/application.yaml) represents the GitOps engine of this project. Below is an exhaustive breakdown of every field, its operational meaning, and why it is configured this way:
+The file [`argocd/application.yaml`](argocd/application.yaml) represents the GitOps engine of this project. Below is an exhaustive breakdown of every field, its operational meaning, and why it is configured this way:
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
@@ -128,7 +128,7 @@ spec:
       - CreateNamespace=true
 ```
 
-> 📖 **Deep Dive Documentation:** For complete operations, UI access, and cluster setup instructions, see the dedicated [ArgoCD Documentation (`k8s/argocd/README.md`)](k8s/argocd/README.md).
+> 📖 **Deep Dive Documentation:** For complete operations, UI access, and cluster setup instructions, see the dedicated [ArgoCD Documentation (`argocd/README.md`)](argocd/README.md).
 
 ### ❓ Why 2 Different Namespaces (`argocd` vs `default`)?
 Even on a single-node or Master-only cluster, separating namespaces enforces production-grade isolation:
@@ -257,7 +257,7 @@ Understanding which component executes first and how data flows across the pipel
              │ (ArgoCD polls GitHub / GitOps reconciliation)
              ▼
 4. ARGOCD (Automated GitOps Runtime Delivery)
-   Configured in: k8s/argocd/application.yaml
+   Configured in: argocd/application.yaml
    Line 20: syncPolicy: automated: prune: true, selfHeal: true
    ArgoCD continuously watches your GitHub repo. When it sees the new commit, it automatically deploys the manifests to Kubernetes.
 ```
@@ -311,7 +311,7 @@ git push origin main
 ### 3. Deploy Application via ArgoCD
 Apply the GitOps application controller manifest to your cluster:
 ```bash
-kubectl apply -f k8s/argocd/application.yaml
+kubectl apply -f argocd/application.yaml
 ```
 
 ArgoCD will automatically discover the manifests, pull the container images from Docker Hub, provision the Kubernetes pods, and reconcile state continuously.
