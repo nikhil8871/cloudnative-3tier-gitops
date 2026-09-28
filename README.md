@@ -17,6 +17,10 @@ Enterprise-ready 3-Tier cloud application (React, Node.js, AWS RDS MySQL) deploy
 
 The system is architected across three distinct tiers with strict network isolation and declarative GitOps automation:
 
+<p align="center">
+  <img src="docs/architecture-diagram.jpg" alt="Cloud-Native 3-Tier GitOps Architecture Diagram" width="100%" />
+</p>
+
 ```text
 ===================================================================================================
                                       1. DEVELOPER WORKFLOW
