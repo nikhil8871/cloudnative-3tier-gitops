@@ -1,12 +1,12 @@
 ########################1############################
 
-resource "aws_security_group" "external_alb-sg" {
-  name        = "external-alb-sg"
-  description = "allow traffic coming from user on port 80"
+resource "aws_security_group" "external_alb_sg" {
+  name        = "external_alb_sg"
+  description = "allow traffic coming from route53"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
-    description = "allow traffic from user"
+    description = "allow traffic from route53 to LB"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -24,17 +24,17 @@ resource "aws_security_group" "external_alb-sg" {
 
 ######################2####################################
 
-resource "aws_security_group" "web-front-sg" {
-  name        = "web-front-sg"
+resource "aws_security_group" "worker_node_sg" {
+  name        = "worker_node_sg"
   description = "allow traffic coming from internet gateway on port 80"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
-    description = "allow HTTP traffic from internet gateway"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    description     = "allow HTTP traffic from external load balancer"
+    from_port       = 30080
+    to_port         = 30080
+    protocol        = "tcp"
+    security_groups = [aws_security_group.external_alb_sg.id]
   }
 
   ingress {
@@ -56,58 +56,6 @@ resource "aws_security_group" "web-front-sg" {
 
 #########################3###################################
 
-resource "aws_security_group" "internal-alb" {
-  name        = "internal-alb"
-  description = "allow traffic coming from frontend on port 80"
-  vpc_id      = module.vpc.vpc_id
-
-  ingress {
-    description     = "allow traffic from frontend alb"
-    from_port       = 80
-    to_port         = 80
-    protocol        = "tcp"
-    security_groups = [aws_security_group.web-front-sg.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-##########################4#######################################
-
-resource "aws_security_group" "app-backend-sg" {
-  name        = "app-backend-sg"
-  description = "allow traffic coming from frontend on port 4000"
-  vpc_id      = module.vpc.vpc_id
-
-  ingress {
-    description     = "allow traffic from frontend"
-    from_port       = var.backend_port
-    to_port         = var.backend_port
-    protocol        = "tcp"
-    security_groups = [aws_security_group.web-front-sg.id]
-  }
-  ingress {
-    description     = "allow ssh from frontend to backend "
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    security_groups = [aws_security_group.web-front-sg.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-##############################5####################################
-
 resource "aws_security_group" "db-sg" {
   name        = "db-sg"
   description = "allow traffic coming from backend on port ${var.db_port}"
@@ -117,7 +65,7 @@ resource "aws_security_group" "db-sg" {
     from_port       = var.db_port
     to_port         = var.db_port
     protocol        = "tcp"
-    security_groups = [aws_security_group.app-backend-sg.id]
+    security_groups = [aws_security_group.worker_node_sg.id]
   }
 
   ingress {
@@ -125,7 +73,7 @@ resource "aws_security_group" "db-sg" {
     from_port       = 22
     to_port         = 22
     protocol        = "tcp"
-    security_groups = [aws_security_group.app-backend-sg.id]
+    security_groups = [aws_security_group.worker_node_sg.id]
   }
 
   egress {
@@ -134,5 +82,4 @@ resource "aws_security_group" "db-sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
 }

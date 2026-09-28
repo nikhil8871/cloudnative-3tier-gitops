@@ -4,11 +4,14 @@ metadata:
   name: frontend-service
   labels:
     app: frontend
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
 spec:
   type: LoadBalancer
   ports:
     - port: 80
       targetPort: 80
+      nodePort: 30080
       protocol: TCP
       name: http
   selector:

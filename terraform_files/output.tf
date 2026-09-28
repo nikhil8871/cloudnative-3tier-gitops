@@ -1,84 +1,67 @@
-output "aws_ami_id" {
-  value = data.aws_ami.amazon_linux_2023.id
+# ==============================================================================
+# Essential Terraform Outputs
+# ==============================================================================
+
+# --- Application Entrypoint (Frontend) ---
+output "alb_url" {
+  description = "Direct HTTP URL to access the frontend application"
+  value       = "http://${aws_lb.external_alb.dns_name}"
 }
 
-output "key_pair_name" {
-  value = aws_key_pair.aws_key.key_name
+output "alb_dns_name" {
+  description = "DNS name of the Application Load Balancer"
+  value       = aws_lb.external_alb.dns_name
 }
 
-output "vpc_id" {
-  value = module.vpc.vpc_id
+# --- Database Connection & Subnets ---
+output "db_endpoint" {
+  description = "AWS RDS MySQL endpoint address"
+  value       = aws_db_instance.mysql.endpoint
 }
 
-output "public_subnet_ids" {
-  value = module.vpc.public_subnets
-}
-
-output "private_subnet_ids" {
-  value = module.vpc.private_subnets
+output "db_address" {
+  description = "AWS RDS MySQL host address"
+  value       = aws_db_instance.mysql.address
 }
 
 output "database_subnet_ids" {
-  value = module.vpc.database_subnets
+  description = "Subnet IDs where RDS database is deployed"
+  value       = module.vpc.database_subnets
 }
 
-# --- Backend Instance ---
-
-output "backend_name" {
-  value = aws_instance.app-backend.tags["Name"]
+# --- Security Groups (The 3 Core SGs) ---
+output "external_alb_sg_id" {
+  description = "Security Group ID for External Application Load Balancer"
+  value       = aws_security_group.external_alb_sg.id
 }
 
-output "backend_id" {
-  value = aws_instance.app-backend.id
+output "worker_node_sg_id" {
+  description = "Security Group ID for Kubernetes Worker Nodes (Port 30080 & SSH)"
+  value       = aws_security_group.worker_node_sg.id
 }
 
-output "backend_private_ip" {
-  value = aws_instance.app-backend.private_ip
+output "db_sg_id" {
+  description = "Security Group ID for RDS MySQL Database (Port 3306 from Worker Node)"
+  value       = aws_security_group.db-sg.id
 }
 
-# --- Web Frontend Instance ---
-
-output "web_frontend_name" {
-  value = aws_instance.web-front.tags["Name"]
+# --- Network Subnets ---
+output "vpc_id" {
+  description = "VPC ID"
+  value       = module.vpc.vpc_id
 }
 
-output "web_frontend_id" {
-  value = aws_instance.web-front.id
+output "public_subnet_ids" {
+  description = "Public Subnet IDs (used by External ALB)"
+  value       = module.vpc.public_subnets
 }
 
-output "web_frontend_public_ip" {
-  value = aws_instance.web-front.public_ip
+output "private_subnet_ids" {
+  description = "Private Subnet IDs (used by Compute / K8s nodes)"
+  value       = module.vpc.private_subnets
 }
 
-# --- Database ---
-
-output "db_instance_id" {
-  value = aws_db_instance.mysql.id
-}
-
-output "db_instance_ip_address" {
-  value = aws_db_instance.mysql.address
-}
-
-output "db_instance_endpoint" {
-  value = aws_db_instance.mysql.endpoint
-}
-
-output "db_instance_port" {
-  value = aws_db_instance.mysql.port
-}
-
-resource "local_file" "cluster_info" {
-  filename = "${path.module}/cluster_outputs.txt"
-  content  = <<-EOT
-    VPC ID:           ${module.vpc.vpc_id}
-    RDS Endpoint:     ${aws_db_instance.mysql.endpoint}
-    RDS Address:      ${aws_db_instance.mysql.address}
-    Frontend IP:      ${aws_instance.web-front.public_ip}
-    Backend IP:       ${aws_instance.app-backend.private_ip}
-  EOT
-}
-
+# --- GitOps Automation & Cluster Info ---
 resource "local_file" "k8s_db_configmap" {
   filename = "${path.module}/../k8s/database/configmap.yaml"
   content  = <<-EOT
@@ -88,6 +71,8 @@ metadata:
   name: db-config
   labels:
     tier: data
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 data:
   DB_HOST: "${aws_db_instance.mysql.address}"
   DB_USER: "${var.db_username}"
@@ -95,3 +80,15 @@ data:
 EOT
 }
 
+resource "local_file" "cluster_info" {
+  filename = "${path.module}/cluster_outputs.txt"
+  content  = <<-EOT
+    VPC ID:           ${module.vpc.vpc_id}
+    RDS Endpoint:     ${aws_db_instance.mysql.endpoint}
+    RDS Address:      ${aws_db_instance.mysql.address}
+    Application URL:  http://${aws_lb.external_alb.dns_name}
+    External ALB SG:  ${aws_security_group.external_alb_sg.id}
+    Worker Node SG:   ${aws_security_group.worker_node_sg.id}
+    Database SG:      ${aws_security_group.db-sg.id}
+  EOT
+}

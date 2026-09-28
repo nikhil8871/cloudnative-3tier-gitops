@@ -4,6 +4,8 @@ metadata:
   name: db-config
   labels:
     tier: data
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 data:
   DB_HOST: ""
   DB_USER: "admin"

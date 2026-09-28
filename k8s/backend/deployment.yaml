@@ -5,6 +5,8 @@ metadata:
   labels:
     app: backend
     tier: logic
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   replicas: 2
   selector:
@@ -15,6 +17,16 @@ spec:
       labels:
         app: backend
     spec:
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z -v -w5 $DB_HOST 3306; do echo "Waiting for RDS MySQL to become ready on port 3306..."; sleep 3; done; echo "RDS MySQL is ready!"']
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: DB_HOST
       containers:
         - name: backend
           image: nikhil8871/3-tier-backend:v1

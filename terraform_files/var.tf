@@ -43,12 +43,6 @@ variable "private_subnets" {
 
 
 
-variable "instance_type" {
-  description = "EC2 instance size"
-  type        = string
-  default     = "t3.micro"
-}
-
 variable "key_name" {
   description = "Name of the EC2 Key Pair"
   type        = string
@@ -59,11 +53,6 @@ variable "public_key" {
   type    = string
   default = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOTPy7DCn1MNdhnZBenRHkoIeMAwe/pBNkRtQAnVbACJ nikhi@Nikhil"
 
-}
-
-variable "backend_port" {
-  type    = number
-  default = 4000
 }
 
 variable "db_port" {
