@@ -65,38 +65,40 @@ infra   │                                image  │
         │  │ k8s/ manifests                          │ auto-syncs desired state
         │  │ (Single Source of Truth)                ▼
         │  │                            ┌─────────────────────────────────────────────────────────┐
-        │  │                            │             KUBERNETES CLUSTER (K8s RUNTIME)            │
-        │  │                            │                                                         │
-        │  │                            │    [ Ingress / Frontend Service (LoadBalancer :80) ]    │
-        │  │                            │                            │                            │
-        │  │                            │                            ▼                            │
-        │  │                            │    ┌───────────────────────────────────────────────┐    │
-        │  │                            │    │ Frontend Pods (React UI + Nginx Reverse Proxy)│    │
-        │  │                            │    └───────────────────────────────────────────────┘    │
-        │  │                            │                            │                            │
-        │  │                            │               proxy_pass   │ http://backend-service:4000│
-        │  │                            │                            ▼                            │
-        │  │                            │         [ Backend Service (ClusterIP :4000) ]           │
-        │  │                            │                            │                            │
-        │  │                            │                            ▼                            │
-        │  │                            │    ┌───────────────────────────────────────────────┐    │
-        │  │                            │    │       Backend Pods (Node.js REST API)         │    │
-        │  │                            │    └───────────────────────────────────────────────┘    │
+        │  │                            │              AMAZON ROUTE 53 (GLOBAL DNS)               │
+        │  │                            │               (Alias routing to ALB)                    │
         │  │                            └────────────────────────────┬────────────────────────────┘
-        ▼  ▼                                                         │
-┌─────────────────────────────────────────────────────────────────┐  │
-│                       AWS CLOUD (VPC)                           │  │
-│                                                                 │  │
-│  • VPC: 10.0.0.0/16 (us-west-1)                                 │  │ connects securely
-│  • Public Subnet: 10.0.1.0/24 (Internet Gateway + NAT Gateway)  │  │ over port 3306
-│  • Private Compute Subnet: 10.0.3.0/24 (K8s Nodes)              │  │
-│  • Private Database Subnets: 10.0.5.0/24 & 10.0.6.0/24 (Multi-AZ│  │
-│                                                                 │  │
-│      ┌──────────────────────────────────────────────────┐       │  │
-│      │            AWS RDS MySQL 8.0 Instance            │ <─────┘──┘
-│      │                   (dev-mysql-db)                 │
-│      └──────────────────────────────────────────────────┘
-└─────────────────────────────────────────────────────────────────┘
+        │  │                                                         │ User Traffic (:80/:443)
+        ▼  ▼                                                         ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                   AWS CLOUD VPC (10.0.0.0/16)                                   │
+│                                                                                                 │
+│ ┌─────────────────────────────────────────────────────────────────────────────────────────────┐ │
+│ │ 1. PUBLIC SUBNET (10.0.1.0/24)                                                              │ │
+│ │    Internet Gateway (IGW) ──► External Application Load Balancer (ALB) + NAT Gateway        │ │
+│ └──────────────────────────────────────────────┬──────────────────────────────────────────────┘ │
+│                                                │ forwards traffic to NodePort :30080            │
+│                                                ▼                                                │
+│ ┌─────────────────────────────────────────────────────────────────────────────────────────────┐ │
+│ │ 2. PRIVATE COMPUTE SUBNET (10.0.3.0/24) - KUBERNETES RUNTIME                                │ │
+│ │                                                                                             │ │
+│ │   [ Master Node ] ──► ArgoCD GitOps Controller (watches GitHub repo & reconciles state)     │ │
+│ │                                                                                             │ │
+│ │   [ Worker Nodes ]                                                                          │ │
+│ │      ├── Frontend Service (NodePort :30080)                                                 │ │
+│ │      │     └── React Frontend Pods (Nginx Reverse Proxy)                                    │ │
+│ │      │           │                                                                          │ │
+│ │      │           ▼ proxy_pass /api/*                                                        │ │
+│ │      └── Backend Service (ClusterIP :4000)                                                  │ │
+│ │            └── Node.js Express REST API Pods                                                │ │
+│ └──────────────────────────────────────────────┬──────────────────────────────────────────────┘ │
+│                                                │ connects securely over port 3306               │
+│                                                ▼                                                │
+│ ┌─────────────────────────────────────────────────────────────────────────────────────────────┐ │
+│ │ 3. PRIVATE ISOLATED DATABASE SUBNET (10.0.5.0/24 & 10.0.6.0/24)                             │ │
+│ │    AWS RDS MySQL 8.0 Multi-AZ Instance (dev-mysql-db)                                       │ │
+│ └─────────────────────────────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
