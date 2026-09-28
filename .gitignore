@@ -13,6 +13,7 @@ override.tf.json
 *_override.tf.json
 cluster_outputs.txt
 AllConcept
+*.exe
 
 # --- Node / JavaScript ---
 node_modules/
