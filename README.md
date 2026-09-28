@@ -206,23 +206,23 @@ This repository implements **smart path filtering** to optimize runner minutes a
 │   ├── argocd/
 │   │   └── application.yaml        # ArgoCD GitOps Application manifest
 │   ├── backend/
-│   │   ├── deployment.yaml         # Backend pods (2 replicas)
-│   │   └── service.yaml            # Internal ClusterIP (port 4000)
+│   │   ├── deployment.yaml         # Backend pods (Wave 2 + wait-for-db Init Container)
+│   │   └── service.yaml            # Internal ClusterIP (port 4000, Wave 2)
 │   ├── database/
-│   │   ├── configmap.yaml          # DB_HOST, DB_NAME, DB_USER
-│   │   └── secret.yaml             # Base64-encoded DB credentials
+│   │   ├── configmap.yaml          # DB_HOST, DB_NAME, DB_USER (Wave 1)
+│   │   └── secret.yaml             # Base64-encoded DB credentials (Wave 1)
 │   └── frontend/
-│       ├── deployment.yaml         # Frontend pods (2 replicas)
-│       └── service.yaml            # External LoadBalancer (port 80)
+│       ├── deployment.yaml         # Frontend pods (Wave 3)
+│       └── service.yaml            # External LoadBalancer (NodePort 30080, Wave 3)
 ├── terraform_files/                # AWS Infrastructure as Code
 │   ├── vpc.tf                      # Custom VPC, Subnets, Gateways, Route Tables
-│   ├── rds.tf                      # AWS RDS MySQL 8.0 Multi-AZ database
-│   ├── aws_instance.tf             # EC2 Kubernetes host instance
-│   ├── sg.tf                       # Tiered Security Groups
+│   ├── rds.tf                      # AWS RDS MySQL 8.0 database in private subnets
+│   ├── alb.tf                      # AWS External Application Load Balancer & Target Group (NodePort 30080)
+│   ├── sg.tf                       # Security Groups (external_alb_sg, worker_node_sg, db-sg)
 │   ├── key-pair.tf                 # SSH access keys
 │   ├── provider.tf                 # AWS provider configuration
 │   ├── var.tf                      # Configurable input variables
-│   └── output.tf                   # RDS endpoint & connection details
+│   └── output.tf                   # Live ALB URL, RDS endpoints & ConfigMap automation
 ├── docs/                           # Architectural diagrams and flowcharts
 ├── Docker-Compose.yml              # Local developer environment
 └── README.md                       # Main project documentation
@@ -237,7 +237,7 @@ Understanding which component executes first and how data flows across the pipel
 ```text
 1. TERRAFORM (Run Once by Engineer / Infra Team)
    You run: cd terraform_files && terraform apply
-   Why: Infrastructure (VPCs, RDS Databases, EC2 host) is long-lived and does not change on every code commit.
+   Why: Infrastructure (VPC, RDS Database, External ALB) is long-lived and does not change on every code commit.
    Note: terraform_files/output.tf automatically writes the generated RDS endpoint directly into k8s/database/configmap.yaml!
 
              │ (Outputs RDS Endpoint & auto-populates configmap.yaml)
