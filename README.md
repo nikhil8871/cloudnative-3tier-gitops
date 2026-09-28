@@ -98,8 +98,50 @@ infra   │                                image  │
 │ │ 3. PRIVATE ISOLATED DATABASE SUBNET (10.0.5.0/24 & 10.0.6.0/24)                             │ │
 │ │    AWS RDS MySQL 8.0 Multi-AZ Instance (dev-mysql-db)                                       │ │
 │ └─────────────────────────────────────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+<details>
+<summary><b>📊 Click to expand Interactive GitOps & Runtime Flowchart (Mermaid)</b></summary>
+
+```mermaid
+flowchart TD
+    subgraph Dev["1. Developer & Git Layer"]
+        DevUser["Developer"] -->|git push| Repo["GitHub Monorepo"]
+    end
+
+    subgraph CI["2. GitHub Actions CI Pipelines"]
+        Repo -->|terraform_files/**| TF_CI["Terraform CI - fmt, init, validate"]
+        Repo -->|backend/** & frontend/**| App_CI["Docker Buildx & Push - SHA, v1, latest"]
+        Repo -->|k8s/**| Lint_CI["K8s YAML Validator"]
+        App_CI -->|push images| DockerHub["Docker Hub Registry"]
+    end
+
+    subgraph GitOps["3. GitOps Continuous Delivery"]
+        Repo -.->|watches k8s/ manifests| ArgoCD["ArgoCD Controller - Self-Heal & Auto-Prune"]
+        DockerHub -.->|pulls images| ArgoCD
+    end
+
+    subgraph AWS_VPC["4. AWS VPC (10.0.0.0/16)"]
+        subgraph PublicSubnet["Public Subnet (10.0.1.0/24)"]
+            Route53["Amazon Route 53 DNS"] --> IGW["Internet Gateway"]
+            IGW --> ALB["External Application Load Balancer - Port 80"]
+        end
+
+        subgraph ComputeSubnet["Private Compute Subnet (10.0.3.0/24) - Kubernetes Cluster"]
+            ArgoCD ==>|Sync Waves 1 -> 2 -> 3| K8sCluster["Kubernetes Control Plane"]
+            ALB -->|NodePort :30080| FrontSvc["Frontend Service - NodePort"]
+            FrontSvc --> FrontPod["Frontend Pods - React UI + Nginx"]
+            FrontPod -->|proxy_pass /api/*| BackSvc["Backend Service - ClusterIP :4000"]
+            BackSvc --> BackPod["Backend Pods - Node.js REST API"]
+        end
+
+        subgraph DBSubnet["Private Database Subnet (10.0.5.0/24) - Multi-AZ"]
+            BackPod -->|SQL Port 3306| RDS["AWS RDS MySQL 8.0 - dev-mysql-db"]
+        end
+    end
+```
+
+</details>
 
 ---
 
