@@ -192,6 +192,9 @@ This repository implements **smart path filtering** to optimize runner minutes a
 │       ├── k8s-validate.yaml       # Kubernetes YAML syntax validator
 │       ├── terraform-ci.yaml       # Terraform linting & validation
 │       └── README.md               # Detailed CI/CD workflow docs
+├── argocd/                         # ArgoCD GitOps Continuous Delivery
+│   ├── application.yaml            # ArgoCD Application manifest (watches k8s/)
+│   └── README.md                   # Dedicated ArgoCD documentation
 ├── backend/                        # Node.js Express REST API
 │   ├── DbConfig.js                 # MySQL database connection pool
 │   ├── TransactionService.js       # Transaction business logic
@@ -202,9 +205,7 @@ This repository implements **smart path filtering** to optimize runner minutes a
 │   ├── nginx.conf                  # Nginx reverse proxy configuration
 │   ├── Dockerfile                  # Multi-stage production container
 │   └── package.json
-├── k8s/                            # Declarative Kubernetes Manifests
-│   ├── argocd/
-│   │   └── application.yaml        # ArgoCD GitOps Application manifest
+├── k8s/                            # Declarative Kubernetes Workload Manifests
 │   ├── backend/
 │   │   ├── deployment.yaml         # Backend pods (Wave 2 + wait-for-db Init Container)
 │   │   └── service.yaml            # Internal ClusterIP (port 4000, Wave 2)
