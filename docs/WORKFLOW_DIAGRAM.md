@@ -1,5 +1,9 @@
 # End-to-End GitOps Workflow Diagram
 
+<p align="center">
+  <img src="architecture-diagram.jpg" alt="Cloud-Native 3-Tier GitOps Architecture Diagram" width="100%" />
+</p>
+
 ```text
 ===================================================================================================
                                       1. DEVELOPER WORKFLOW
@@ -46,7 +50,7 @@ infra   │                                image  │
         │  │                            ┌─────────────────────────────────────────────────────────┐
         │  │                            │             KUBERNETES CLUSTER (K8s RUNTIME)            │
         │  │                            │                                                         │
-        │  │                            │    [ Ingress / Frontend Service (LoadBalancer :80) ]    │
+        │  │                            │    [ External ALB :80 (Public Subnet) ──► NodePort :30080 ]    │
         │  │                            │                            │                            │
         │  │                            │                            ▼                            │
         │  │                            │    ┌───────────────────────────────────────────────┐    │
@@ -67,7 +71,7 @@ infra   │                                image  │
 │                       AWS CLOUD (VPC)                           │  │
 │                                                                 │  │
 │  • VPC: 10.0.0.0/16 (us-west-1)                                 │  │ connects securely
-│  • Public Subnet: 10.0.1.0/24 (Internet Gateway + NAT Gateway)  │  │ over port 3306
+│  • Public Subnet: 10.0.1.0/24 (Route 53 + ALB + NAT Gateway)    │  │ over port 3306
 │  • Private Compute Subnet: 10.0.3.0/24 (K8s Nodes)              │  │
 │  • Private Database Subnets: 10.0.5.0/24 & 10.0.6.0/24 (Multi-AZ│  │
 │                                                                 │  │
@@ -89,9 +93,11 @@ infra   │                                image  │
 ### 2. GitOps Continuous Delivery (ArgoCD)
 * **Single Source of Truth:** The `k8s/` directory in this GitHub repository holds the declarative target state for the entire cluster.
 * **Automated Reconciliation:** The ArgoCD controller polls the repository, detects any drift between the live cluster state and Git, and automatically self-heals without manual `kubectl` intervention.
+* **Sync Waves:** Enforces controlled deployment order (`Wave 1: Configs/Secrets` → `Wave 2: Backend + wait-for-db InitContainer` → `Wave 3: Frontend`).
 
 ### 3. Application Runtime Flow
-1. **User Request:** Traffic enters on port `80` through the Frontend Service (`LoadBalancer`).
-2. **Reverse Proxy:** Nginx serves the React Single-Page Application and proxies `/api/*` calls internally to `http://backend-service:4000/`.
-3. **Cluster Routing:** Kubernetes routes internal traffic across backend pods via ClusterIP service resolution.
-4. **Data Isolation:** Backend pods connect to AWS RDS MySQL over port `3306` inside private database subnets with credentials injected via Kubernetes Secrets.
+1. **User Request:** Traffic enters via Amazon Route 53 DNS and hits the External Application Load Balancer (ALB) on port `80` in the Public Subnet.
+2. **Compute Ingress:** The ALB forwards traffic to Kubernetes Worker Nodes on NodePort `30080`.
+3. **Reverse Proxy:** The React frontend Nginx reverse proxy serves UI static assets and transparently proxies `/api/*` requests internally to `http://backend-service:4000/`.
+4. **Cluster Routing:** Kubernetes routes internal traffic across backend pods via ClusterIP service resolution.
+5. **Data Isolation:** Backend pods connect to AWS RDS MySQL over port `3306` inside private database subnets with credentials injected via Kubernetes Secrets.
